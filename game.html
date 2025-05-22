@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Endless Stack Game</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to top, #0f2027, #203a43, #2c5364);
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #333;
+    }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<!-- Sound effects -->
+<audio id="sound-success" src="success.mp3" preload="auto"></audio>
+<audio id="sound-gameover" src="gameover.mp3" preload="auto"></audio>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const soundSuccess = document.getElementById("sound-success");
+const soundGameOver = document.getElementById("sound-gameover");
+
+let stack = [];
+let blockWidth = 200;
+let blockHeight = 30;
+let speed = 2;
+let direction = 1;
+let score = 0;
+let gameOver = false;
+let cameraOffset = 0;
+
+// Initial block
+stack.push({
+  x: canvas.width / 2 - blockWidth / 2,
+  y: canvas.height - blockHeight,
+  width: blockWidth,
+  color: getRandomColor()
+});
+
+let current = {
+  x: canvas.width / 2 - blockWidth / 2,
+  y: stack[0].y - blockHeight,
+  width: blockWidth,
+  color: getRandomColor()
+};
+
+function getRandomColor() {
+  const colors = ["#FF6B6B", "#6BCB77", "#4D96FF", "#FFD93D", "#A66DD4"];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function drawBlock(block) {
+  ctx.fillStyle = block.color;
+  ctx.fillRect(block.x, block.y - cameraOffset, block.width, blockHeight);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stack.forEach(drawBlock);
+  drawBlock(current);
+  drawScore();
+}
+
+function drawScore() {
+  ctx.fillStyle = "#fff";
+  ctx.font = "20px Arial";
+  ctx.fillText("Score: " + score, 10, 30);
+}
+
+function update() {
+  if (gameOver) return;
+
+  current.x += speed * direction;
+
+  if (current.x <= 0) {
+    current.x = 0;
+    direction = 1;
+  }
+  if (current.x + current.width >= canvas.width) {
+    current.x = canvas.width - current.width;
+    direction = -1;
+  }
+
+  // Camera follows the current block
+  const targetY = current.y - canvas.height * 0.65;
+  cameraOffset += (targetY - cameraOffset) * 0.1;
+
+  draw();
+  requestAnimationFrame(update);
+}
+
+function placeBlock() {
+  if (gameOver) return;
+
+  const last = stack[stack.length - 1];
+  const delta = current.x - last.x;
+
+  if (Math.abs(delta) < current.width) {
+    current.width -= Math.abs(delta);
+    current.x = delta > 0 ? current.x : last.x;
+
+    stack.push({ ...current });
+
+    current = {
+      x: canvas.width / 2 - current.width / 2,
+      y: current.y - blockHeight,
+      width: current.width,
+      color: getRandomColor()
+    };
+
+    speed += 0.2; // Gradual speed increase
+    score++;
+    playSound("success");
+  } else {
+    playSound("gameover");
+    showEndMessage("Missed! Game Over! Final Score: " + score);
+  }
+}
+
+function playSound(type) {
+  const sound = type === "success" ? soundSuccess : soundGameOver;
+  sound.currentTime = 0;
+  sound.play();
+}
+
+function showEndMessage(message) {
+  gameOver = true;
+  setTimeout(() => {
+    if (confirm(`${message}\nPlay again?`)) {
+      location.reload();
+    }
+  }, 100);
+}
+
+canvas.addEventListener("click", placeBlock);
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space") placeBlock();
+});
+
+update();
+</script>
+</body>
+</html>
+w
